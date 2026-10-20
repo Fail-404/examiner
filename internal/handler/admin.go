@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pavelanni/examiner/internal/handler/views"
+	appI18n "github.com/pavelanni/examiner/internal/i18n"
 	"github.com/pavelanni/examiner/internal/model"
 )
 
@@ -78,6 +79,11 @@ func (h *Handler) handleToggleUserActive(w http.ResponseWriter, r *http.Request)
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		http.Error(w, "invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	if current := model.UserFromContext(r.Context()); current != nil && current.ID == id {
+		http.Error(w, appI18n.T(r.Context(), "CannotDeactivateSelf"), http.StatusForbidden)
 		return
 	}
 
