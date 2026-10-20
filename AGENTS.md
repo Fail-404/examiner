@@ -2,6 +2,20 @@
 
 See `CLAUDE.md` for build, deployment, and project conventions.
 
+## Owner workflow for Fail-404/examiner
+
+- Read `docs/development/user-guide-ru.md` and `docs/development/work-log-ru.md`
+  before continuing the owner's work. Update the relevant user instructions and
+  the factual work log with each change; keep work items in GitHub Issues.
+- Continue the U (user request), A (assistant message), and D (change record)
+  identifiers from the current conversation and work log. Include the related
+  U identifier in assistant progress updates and final reports.
+- Before publishing, verify that GitHub API authentication is `Fail-404` and
+  that Git author and committer match the owner's identity documented in the guide.
+  Git metadata and GitHub authentication are separate checks.
+- For first-run Windows instructions, link `docs/development/run-windows-ru.md`.
+  Distinguish documented steps from operations actually verified on the owner's PC.
+
 ## Issue tracking
 
 - **Work items:** GitHub Issues (`gh issue list`, `gh issue view <n>`).
