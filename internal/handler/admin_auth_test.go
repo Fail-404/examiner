@@ -113,7 +113,7 @@ func TestAdminCannotDeactivateSelfAndCanLogInAgain(t *testing.T) {
 				t.Fatal("self-deactivation attempt changed admin credentials or activity", err)
 			}
 			request("/admin/users", nil, http.StatusOK)
-			// Managing another user's activity must remain available.
+			// Управление активностью другого пользователя остаётся доступным.
 			for _, wantActive := range []bool{false, true} {
 				request(fmt.Sprintf("/admin/users/%d/toggle", studentID),
 					url.Values{"csrf_token": {token()}}, http.StatusSeeOther)

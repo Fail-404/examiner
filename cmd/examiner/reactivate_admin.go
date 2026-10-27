@@ -10,8 +10,8 @@ import (
 	"github.com/pavelanni/examiner/internal/store"
 )
 
-// reactivateAdminCmd is an offline recovery operation for a local database owner.
-// It does not start HTTP/LLM services or change the user's password.
+// reactivateAdminCmd восстанавливает активность администратора локальной базы.
+// Пароль сохраняется; запуск HTTP-сервера и подключение к LLM не требуются.
 func reactivateAdminCmd() *cobra.Command {
 	var dbPath, username string
 	cmd := &cobra.Command{

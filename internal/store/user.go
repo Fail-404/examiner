@@ -87,8 +87,8 @@ func (s *Store) ToggleUserActive(id int64) error {
 	return err
 }
 
-// ReactivateAdmin restores an existing administrator without changing their
-// password, role, or exam data. It does not create or promote users.
+// ReactivateAdmin включает существующего администратора, сохраняя пароль,
+// роль и данные экзаменов. Создание пользователей и повышение роли исключены.
 func (s *Store) ReactivateAdmin(username string) error {
 	result, err := s.db.Exec(`UPDATE users SET active = 1 WHERE username = ? AND role = ?`,
 		username, model.UserRoleAdmin)
