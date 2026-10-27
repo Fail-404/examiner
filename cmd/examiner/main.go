@@ -44,7 +44,7 @@ func rootCmd() *cobra.Command {
 	}
 
 	serve := serveCmd()
-	root.AddCommand(serve, exportCmd(), prepCmd())
+	root.AddCommand(serve, exportCmd(), prepCmd(), reactivateAdminCmd())
 
 	// Make "serve" the default when no subcommand is given.
 	root.RunE = serve.RunE
