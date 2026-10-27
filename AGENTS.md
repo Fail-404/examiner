@@ -4,6 +4,10 @@ See `CLAUDE.md` for build, deployment, and project conventions.
 
 ## Owner workflow for Fail-404/examiner
 
+- Новые комментарии в коде, описания и комментарии в Issues/PR, заголовки PR,
+  сообщения коммитов и пояснения владельцу писать по-русски (запрос U-005).
+  Идентификаторы, команды и имена API сохранять в принятом в проекте виде.
+
 - Read `docs/development/user-guide-ru.md` and `docs/development/work-log-ru.md`
   before continuing the owner's work. Update the relevant user instructions and
   the factual work log with each change; keep work items in GitHub Issues.
@@ -15,6 +19,8 @@ See `CLAUDE.md` for build, deployment, and project conventions.
   Git metadata and GitHub authentication are separate checks.
 - For first-run Windows instructions, link `docs/development/run-windows-ru.md`.
   Distinguish documented steps from operations actually verified on the owner's PC.
+- Для работы с бэклогом исходного проекта и переноса задания в новый чат
+  прочитать `docs/development/upstream-workflow-ru.md`.
 
 ## Issue tracking
 
