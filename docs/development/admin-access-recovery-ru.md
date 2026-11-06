@@ -74,7 +74,8 @@ Administrator "admin" is active. Password unchanged.
 пароль, не создаёт нового пользователя и не повышает студента до администратора.
 Путь берётся непосредственно из --db; настройки конфигурационного файла
 и EXAMINER_DB для этой команды не используются. Если файл не существует,
-команда откажется работать и не создаст пустую базу по ошибочному адресу.
+пуст или не является обычным файлом, команда откажется работать до открытия
+SQLite и не создаст базу по ошибочному адресу.
 Повторное выполнение для уже активного admin допустимо.
 
 Восстановление выполняется локальным владельцем файла базы; публичной
@@ -85,7 +86,7 @@ Administrator "admin" is active. Password unchanged.
 Использовать прежние настройки модели. В том же терминале:
 
 ```powershell
-task run BINARY=bin/examiner.exe -- --addr 127.0.0.1:8080 --lang ru --questions questions/physics_ru.json --num-questions 2 --secure-cookies=false
+task run BINARY=bin/examiner.exe -- --addr 127.0.0.1:8080 --db .\examiner.db --lang ru --questions questions/physics_ru.json --num-questions 2 --secure-cookies=false
 ```
 
 В браузере своего ПК открыть http://localhost:8080 и войти как admin

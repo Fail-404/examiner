@@ -24,8 +24,8 @@ func reactivateAdminCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("open existing database: %w", err)
 			}
-			if !info.Mode().IsRegular() {
-				return fmt.Errorf("database must be an existing regular file: %s", dbPath)
+			if !info.Mode().IsRegular() || info.Size() == 0 {
+				return fmt.Errorf("database must be an existing non-empty regular file: %s", dbPath)
 			}
 			if username == "" {
 				return fmt.Errorf("administrator username is required")

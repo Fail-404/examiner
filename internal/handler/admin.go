@@ -73,7 +73,8 @@ func (h *Handler) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, h.path("/admin/users"), http.StatusSeeOther)
 }
 
-// handleToggleUserActive toggles a user's active status.
+// handleToggleUserActive переключает активность другого пользователя.
+// Собственную учётную запись администратора отключить нельзя.
 func (h *Handler) handleToggleUserActive(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "userID")
 	id, err := strconv.ParseInt(idStr, 10, 64)

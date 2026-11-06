@@ -85,3 +85,49 @@ func TestReactivateAdminDoesNotCreateDatabase(t *testing.T) {
 		t.Fatalf("recovery created a database at the wrong path: %v", err)
 	}
 }
+
+func TestReactivateAdminRejectsEmptyFileAndDirectory(t *testing.T) {
+	for _, directory := range []bool{false, true} {
+		name := "empty file"
+		if directory {
+			name = "directory"
+		}
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "examiner.db")
+			if directory {
+				if err := os.Mkdir(path, 0o700); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := os.WriteFile(path, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := rootCmd()
+			cmd.SetOut(&bytes.Buffer{})
+			cmd.SetErr(&bytes.Buffer{})
+			cmd.SetArgs([]string{"reactivate-admin", "--db", path})
+			err := cmd.Execute()
+			if err == nil || !strings.Contains(err.Error(), "existing non-empty regular file") {
+				t.Fatalf("expected non-empty regular-file error, got %v", err)
+			}
+			if directory {
+				entries, err := os.ReadDir(path)
+				if err != nil || len(entries) != 0 {
+					t.Fatalf("recovery changed the directory: entries=%v, error=%v", entries, err)
+				}
+			} else {
+				info, err := os.Stat(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if info.Size() != 0 {
+					t.Fatalf("recovery initialized the empty file: size=%d", info.Size())
+				}
+			}
+			for _, suffix := range []string{"-wal", "-shm"} {
+				if _, err := os.Stat(path + suffix); !os.IsNotExist(err) {
+					t.Errorf("recovery created SQLite sidecar %s: %v", suffix, err)
+				}
+			}
+		})
+	}
+}

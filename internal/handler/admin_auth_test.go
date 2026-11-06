@@ -23,7 +23,11 @@ import (
 func TestAdminCannotDeactivateSelfAndCanLogInAgain(t *testing.T) {
 	for _, basePath := range []string{"", "/ru"} {
 		t.Run("base="+basePath, func(t *testing.T) {
-			if err := i18n.Init("en"); err != nil {
+			lang := "en"
+			if basePath == "/ru" {
+				lang = "ru"
+			}
+			if err := i18n.Init(lang); err != nil {
 				t.Fatal(err)
 			}
 			s, err := store.New(filepath.Join(t.TempDir(), "examiner.db"))
@@ -48,7 +52,7 @@ func TestAdminCannotDeactivateSelfAndCanLogInAgain(t *testing.T) {
 			}
 			h := &Handler{store: s, config: model.ExamConfig{BasePath: basePath}}
 			r := chi.NewRouter()
-			r.Use(h.BasePathMiddleware, i18n.Middleware("en"))
+			r.Use(h.BasePathMiddleware, i18n.Middleware(lang))
 			if basePath == "" {
 				h.Routes(r)
 			} else {
@@ -103,11 +107,28 @@ func TestAdminCannotDeactivateSelfAndCanLogInAgain(t *testing.T) {
 			login()
 			page := request("/admin/users", nil, http.StatusOK)
 			selfAction := fmt.Sprintf(`action="%s/admin/users/%d/toggle"`, basePath, adminID)
+			studentAction := fmt.Sprintf(`action="%s/admin/users/%d/toggle"`, basePath, studentID)
 			if strings.Contains(page, selfAction) {
 				t.Error("user management must not offer a self-deactivation form")
 			}
-			request(fmt.Sprintf("/admin/users/%d/toggle", adminID),
+			if !strings.Contains(page, studentAction) {
+				t.Error("user management must offer a toggle form for other users")
+			}
+			if !strings.Contains(page, "<td>admin</td>") {
+				t.Error("user management must list the admin row")
+			}
+			cannotDeactivate := "You cannot deactivate your own account."
+			if lang == "ru" {
+				cannotDeactivate = "Свою учётную запись отключить нельзя."
+			}
+			if !strings.Contains(page, cannotDeactivate) {
+				t.Error("user management must explain the self-deactivation restriction")
+			}
+			body := request(fmt.Sprintf("/admin/users/%d/toggle", adminID),
 				url.Values{"csrf_token": {token()}}, http.StatusForbidden)
+			if !strings.Contains(body, cannotDeactivate) {
+				t.Error("self-deactivation response must explain the restriction in the selected language")
+			}
 			admin, err := s.GetUserByID(adminID)
 			if err != nil || admin == nil || !admin.Active || admin.PasswordHash != string(hash) {
 				t.Fatal("self-deactivation attempt changed admin credentials or activity", err)
