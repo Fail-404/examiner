@@ -114,5 +114,8 @@
   {"id": "AdjustedGrade", "other": "Adjusted grade: {{.Grade}}%"},
   {"id": "CSRFErrorTitle", "other": "Could not submit the form"},
   {"id": "CSRFError", "other": "Your session has expired or the page is out of date, so the form was not submitted. Press the button again; if it fails, reload the page."},
-  {"id": "CSRFPageError", "other": "Your session has expired or the page is out of date, so the form was not submitted. Go back, reload the page and try again."}
+  {"id": "CSRFPageError", "other": "Your session has expired or the page is out of date, so the form was not submitted. Go back, reload the page and try again."},
+  {"id": "RetryEvaluation", "other": "Retry evaluation"},
+  {"id": "SavedAnswerPending", "other": "Your answer is saved. Retry to receive feedback."},
+  {"id": "LLMQueueBusy", "other": "The evaluation service is busy. Your answers are saved. Return to the exam and submit it again."}
 ]

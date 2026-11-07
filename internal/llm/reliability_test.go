@@ -166,6 +166,9 @@ func TestRetryAfter(t *testing.T) {
 		{"2", 2 * time.Second}, {now.Add(3 * time.Second).Format(http.TimeFormat), 3 * time.Second},
 		{now.Add(-time.Second).Format(http.TimeFormat), 0}, {"invalid", 0}, {"-1", 0},
 		{"18446744073709551615", time.Duration(1<<63 - 1)},
+		{"18446744073709551616", time.Duration(1<<63 - 1)},
+		{"184467440737095516160000000000000", time.Duration(1<<63 - 1)},
+		{"184467440737095516160000x", 0},
 	} {
 		if got := retryAfter(tc.header, now); got != tc.want {
 			t.Errorf("Retry-After %q: got %v, want %v", tc.header, got, tc.want)
@@ -326,12 +329,16 @@ func TestInteractiveSlotReserved(t *testing.T) {
 // TestQueueCancellation проверяет отменяемое ожидание семафора без лишнего HTTP-запроса.
 func TestQueueCancellation(t *testing.T) {
 	var calls atomic.Int32
-	client := reliabilityClient(t, func(w http.ResponseWriter, r *http.Request) { calls.Add(1); _, _ = io.WriteString(w, validGrade) }, WithMaxConcurrency(1), WithMaxRetries(0), WithTimeout(50*time.Millisecond))
+	client := reliabilityClient(t, func(w http.ResponseWriter, r *http.Request) { calls.Add(1); _, _ = io.WriteString(w, validGrade) }, WithMaxConcurrency(1), WithMaxRetries(3), WithTimeout(50*time.Millisecond))
 	client.slots <- struct{}{}
-	if err := callGrade(t.Context(), client, false); !errors.Is(err, context.DeadlineExceeded) {
+	started := time.Now()
+	if err := callGrade(t.Context(), client, false); !errors.Is(err, ErrQueueTimeout) || !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("got %v", err)
 	}
 	<-client.slots
+	if time.Since(started) > 500*time.Millisecond {
+		t.Fatal("queue wait exhausted model retries")
+	}
 	if calls.Load() != 0 {
 		t.Fatal("queued request reached the server")
 	}
@@ -439,5 +446,34 @@ func TestRetryBackoffReleasesSlot(t *testing.T) {
 	}
 	if calls.Load() != 2 {
 		t.Fatalf("requests=%d, want 2", calls.Load())
+	}
+}
+
+// TestClientBudgetStopsLongRetryAfter отличает дедлайн клиента от защитного дедлайна теста.
+func TestClientBudgetStopsLongRetryAfter(t *testing.T) {
+	const timeout = 100 * time.Millisecond
+	const budget = 2*timeout + 10*time.Second
+	var calls atomic.Int32
+	client := reliabilityClient(t, func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.Header().Set("Retry-After", "18446744073709551616")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}, WithTimeout(timeout), WithMaxRetries(1))
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	defer cancel()
+	started := time.Now()
+	err := callGrade(ctx, client, false)
+	elapsed := time.Since(started)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("got %v", err)
+	}
+	if ctx.Err() != nil {
+		t.Fatal("caller safety deadline expired before client budget")
+	}
+	if elapsed < budget-100*time.Millisecond || elapsed > budget+time.Second {
+		t.Fatalf("client budget=%v, elapsed=%v", budget, elapsed)
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("huge Retry-After was retried early: %d requests", calls.Load())
 	}
 }

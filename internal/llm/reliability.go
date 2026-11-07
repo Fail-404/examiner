@@ -71,18 +71,29 @@ func (s settings) validate() error {
 	return nil
 }
 
+// ErrQueueTimeout означает, что запрос не получил слот и не был отправлен модели.
+var ErrQueueTimeout = errors.New("LLM capacity wait timed out")
+
+// queueError отличает нехватку ёмкости от тайм-аута уже отправленного запроса.
+func queueError(err error) error {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return fmt.Errorf("%w: %w", ErrQueueTimeout, err)
+	}
+	return err
+}
+
 var errInvalidResponse = errors.New("invalid LLM response")
 
 // acquire ожидает разрешение, не переживая отмену или дедлайн попытки.
 func acquire(ctx context.Context, slots chan struct{}) error {
 	if err := ctx.Err(); err != nil {
-		return err
+		return queueError(err)
 	}
 	select {
 	case slots <- struct{}{}:
 		return nil
 	case <-ctx.Done():
-		return ctx.Err()
+		return queueError(ctx.Err())
 	}
 }
 
@@ -103,6 +114,9 @@ func (c *Client) complete(ctx context.Context, request openai.ChatCompletionRequ
 			"attempt", attempt+1, "duration", time.Since(started), "result", outcome(err), "status", statusCode(err))
 		if err == nil {
 			return result, raw, nil
+		}
+		if errors.Is(err, ErrQueueTimeout) {
+			return nil, raw, fmt.Errorf("LLM %s: %w", op, err)
 		}
 		if ctx.Err() != nil {
 			return nil, raw, fmt.Errorf("LLM %s: %w", op, ctx.Err())
@@ -173,7 +187,7 @@ func statusCode(err error) int {
 
 // retryable не повторяет постоянные HTTP-ошибки и отменённые запросы.
 func retryable(err error) bool {
-	if errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.Canceled) || errors.Is(err, ErrQueueTimeout) {
 		return false
 	}
 	if status := statusCode(err); status != 0 {
@@ -200,8 +214,9 @@ func retryDelay(attempt int) time.Duration {
 // retryAfter понимает секунды и HTTP-date; слишком большое число насыщается.
 func retryAfter(value string, now time.Time) time.Duration {
 	value = strings.TrimSpace(value)
-	if seconds, err := strconv.ParseUint(value, 10, 64); err == nil {
-		if seconds > uint64((1<<63-1)/time.Second) {
+	if value != "" && strings.Trim(value, "0123456789") == "" {
+		seconds, err := strconv.ParseUint(value, 10, 64)
+		if err != nil || seconds > uint64((1<<63-1)/time.Second) {
 			return time.Duration(1<<63 - 1)
 		}
 		return time.Duration(seconds) * time.Second
@@ -219,6 +234,8 @@ func outcome(err error) string {
 		return "success"
 	case errors.Is(err, context.Canceled):
 		return "canceled"
+	case errors.Is(err, ErrQueueTimeout):
+		return "queue_timeout"
 	case errors.Is(err, context.DeadlineExceeded):
 		return "timeout"
 	case statusCode(err) != 0:

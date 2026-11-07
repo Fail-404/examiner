@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -175,9 +176,30 @@ func viperForCmd(cmd *cobra.Command) *viper.Viper {
 	return v
 }
 
+// llmOptions отклоняет некорректные значения вместо неявного преобразования в ноль.
+func llmOptions(v *viper.Viper) ([]llm.Option, error) {
+	timeout, err := time.ParseDuration(strings.TrimSpace(v.GetString("llm-timeout")))
+	if err != nil {
+		return nil, fmt.Errorf("llm-timeout: %w", err)
+	}
+	retries, err := strconv.Atoi(strings.TrimSpace(v.GetString("llm-max-retries")))
+	if err != nil {
+		return nil, fmt.Errorf("llm-max-retries: %w", err)
+	}
+	concurrency, err := strconv.Atoi(strings.TrimSpace(v.GetString("llm-max-concurrency")))
+	if err != nil {
+		return nil, fmt.Errorf("llm-max-concurrency: %w", err)
+	}
+	return []llm.Option{llm.WithTimeout(timeout), llm.WithMaxRetries(retries), llm.WithMaxConcurrency(concurrency)}, nil
+}
+
 func runServe(cmd *cobra.Command, _ []string) error {
 	setupLogging(cmd)
 	v := viperForCmd(cmd)
+	options, err := llmOptions(v)
+	if err != nil {
+		return err
+	}
 
 	// Open database.
 	db, err := store.New(v.GetString("db"))
@@ -218,9 +240,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		v.GetString("llm-key"),
 		v.GetString("llm-model"),
 		promptVariant,
-		llm.WithTimeout(v.GetDuration("llm-timeout")),
-		llm.WithMaxRetries(v.GetInt("llm-max-retries")),
-		llm.WithMaxConcurrency(v.GetInt("llm-max-concurrency")),
+		options...,
 	)
 	if err != nil {
 		return fmt.Errorf("create LLM client: %w", err)
