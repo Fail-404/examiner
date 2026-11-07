@@ -69,6 +69,9 @@ func serveCmd() *cobra.Command {
 	f.String("llm-url", "http://localhost:11434/v1", "OpenAI-compatible API base URL")
 	f.String("llm-key", "ollama", "API key for LLM")
 	f.String("llm-model", "llama3.2", "LLM model name")
+	f.Duration("llm-timeout", llm.DefaultTimeout, "Timeout per LLM attempt, including queue wait")
+	f.Int("llm-max-retries", llm.DefaultMaxRetries, "LLM retries after the initial attempt (0-100)")
+	f.Int("llm-max-concurrency", llm.DefaultMaxConcurrency, "Maximum simultaneous LLM requests per process")
 	f.StringP("lang", "l", "en", "UI language (en, ru)")
 	f.IntP("num-questions", "n", 0, "Number of questions per exam (0 = all available)")
 	f.StringP("difficulty", "d", "", "Filter questions by difficulty (easy, medium, hard)")
@@ -215,6 +218,9 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		v.GetString("llm-key"),
 		v.GetString("llm-model"),
 		promptVariant,
+		llm.WithTimeout(v.GetDuration("llm-timeout")),
+		llm.WithMaxRetries(v.GetInt("llm-max-retries")),
+		llm.WithMaxConcurrency(v.GetInt("llm-max-concurrency")),
 	)
 	if err != nil {
 		return fmt.Errorf("create LLM client: %w", err)

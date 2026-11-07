@@ -396,7 +396,7 @@ func (h *Handler) handleAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, _, err := h.llm.EvaluateAnswer(context.Background(), question, messages, bp.MaxFollowups, sessionID, threadID)
+	result, _, err := h.llm.EvaluateAnswer(r.Context(), question, messages, bp.MaxFollowups, sessionID, threadID)
 	if err != nil {
 		slog.Error("LLM evaluation failed", "error", err)
 		http.Error(w, "LLM evaluation failed: "+err.Error(), http.StatusInternalServerError)
@@ -512,6 +512,9 @@ func (h *Handler) handleSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Финальная оценка не отменяется при закрытии браузера; каждый вызов
+	// ограничен бюджетом llm.Client. Постоянная очередь реализуется в #48.
+	gradingCtx := context.WithoutCancel(r.Context())
 	var totalScore float64
 	var totalMaxPoints int
 
@@ -533,7 +536,7 @@ func (h *Handler) handleSubmit(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		result, err := h.llm.GradeThread(context.Background(), question, messages, sessionID, t.ID)
+		result, err := h.llm.GradeThread(gradingCtx, question, messages, sessionID, t.ID)
 		if err != nil {
 			slog.Error("grading failed", "thread_id", t.ID, "error", err)
 			if err := h.store.UpsertScore(model.QuestionScore{
